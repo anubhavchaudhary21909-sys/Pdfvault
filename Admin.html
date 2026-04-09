@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF Vault — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #111;
+      --card: #1a1a1a;
+      --card2: #161616;
+      --border: #2a2a2a;
+      --accent: #e8c97a;
+      --accent2: #c45e3e;
+      --success: #5aad7e;
+      --text: #f0ece4;
+      --muted: #6b6560;
+      --tag-bg: #221f1a;
+      --danger: #c45e3e;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0.5;
+    }
+
+    /* ── Login Screen ── */
+    #loginScreen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+      animation: fadeUp 0.5s forwards;
+    }
+
+    .login-box .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .login-box .logo span { color: var(--accent); }
+    .login-box .sub {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+
+    .field { margin-bottom: 20px; }
+    .field label {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .field input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus {
+      border-color: var(--accent);
+    }
+
+    .btn-primary {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      color: var(--bg);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      font-weight: 500;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #loginError {
+      margin-top: 14px;
+      font-size: 0.8rem;
+      color: var(--danger);
+      font-family: 'DM Mono', monospace;
+      min-height: 18px;
+    }
+
+    /* ── App shell ── */
+    #appShell { display: none; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+      position: sticky;
+      top: 0;
+      background: rgba(13,13,13,0.92);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+    }
+    .logo span { color: var(--accent); }
+
+    .header-right { display: flex; align-items: center; gap: 24px; }
+
+    .admin-badge {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      color: var(--accent);
+    }
+
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      padding: 7px 16px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    nav a {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--accent); }
+
+    /* ── Main Layout ── */
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+
+    /* ── Add Form ── */
+    .form-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 32px;
+      position: sticky;
+      top: 104px;
+    }
+
+    .panel-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .panel-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+      display: block;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      resize: none;
+    }
+    .form-group textarea { min-height: 80px; }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus { border-color: var(--accent); }
+    .form-group select option { background: var(--card); }
+
+    .submit-btn {
+      width: 100%;
+      background: var(--accent);
+      border: none;
+      color: var(--bg);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 14px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+    .submit-btn:hover { opacity: 0.85; }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #formMsg {
+      margin-top: 12px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      min-height: 18px;
+    }
+    #formMsg.success { color: var(--success); }
+    #formMsg.error   { color: var(--danger); }
+
+    /* ── Document List ── */
+    .list-panel {}
+
+    .list-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .list-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    #docCount {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--accent);
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+    }
+
+    .search-row {
+      margin-bottom: 20px;
+    }
+    .search-row input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      padding: 11px 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-row input:focus { border-color: var(--accent); }
+
+    .doc-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .doc-item {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      transition: border-color 0.2s;
+      animation: fadeUp 0.4s forwards;
+      opacity: 0;
+    }
+    .doc-item:hover { border-color: rgba(232,201,122,0.3); }
+
+    .doc-icon {
+      color: var(--accent2);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .doc-info { flex: 1; min-width: 0; }
+
+    .doc-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .doc-url {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 8px;
+    }
+
+    .doc-bottom {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .doc-tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .doc-date {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    .doc-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .act-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 0.05em;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .act-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .act-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* Empty */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty p { font-size: 0.85rem; line-height: 1.7; }
+
+    /* Loading */
+    .loading-pulse {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+      gap: 8px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%,80%,100% { opacity:0.3; transform:scale(0.8); }
+      40% { opacity:1; transform:scale(1); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      background: var(--card);
+      border: 1px solid var(--accent);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.78rem;
+      padding: 13px 20px;
+      z-index: 9999;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.err  { border-color: var(--danger); }
+
+    /* Confirm Dialog */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 400;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .overlay.show { display: flex; }
+    .dialog {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 36px;
+      max-width: 380px;
+      width: 100%;
+    }
+    .dialog h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+    .dialog p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 28px; }
+    .dialog-btns { display: flex; gap: 12px; }
+    .dialog-btns button {
+      flex: 1;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 12px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: none;
+      color: var(--muted);
+      transition: all 0.2s;
+    }
+    .dialog-btns .confirm-del {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #fff;
+    }
+    .dialog-btns button:hover:not(.confirm-del) { border-color: var(--accent); color: var(--accent); }
+
+    @media (max-width: 900px) {
+      .main { grid-template-columns: 1fr; padding: 24px; }
+      .form-panel { position: static; }
+      header { padding: 0 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ─────────────────────────────────────────────── -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="logo">PDF <span>Vault</span></div>
+    <div class="sub">/ Admin Portal</div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="email"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="btn-primary" id="loginBtn" onclick="doLogin()">Sign In →</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- ── App Shell ──────────────────────────────────────────── -->
+<div id="appShell">
+  <header>
+    <div class="logo">PDF <span>Vault</span></div>
+    <div class="header-right">
+      <span class="admin-badge">Admin</span>
+      <nav><a href="index.html">View Library →</a></nav>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Add Form -->
+    <div class="form-panel">
+      <div class="panel-title">Add Document</div>
+      <div class="panel-sub">Paste a publicly accessible PDF link to add it to the library.</div>
+
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" id="fTitle" placeholder="e.g. Annual Report 2024"/>
+      </div>
+      <div class="form-group">
+        <label>PDF URL *</label>
+        <input type="url" id="fUrl" placeholder="https://example.com/file.pdf"/>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="fDesc" placeholder="Brief description of this document…"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="fCat">
+          <option value="General">General</option>
+          <option value="Report">Report</option>
+          <option value="Guide">Guide</option>
+          <option value="Research">Research</option>
+          <option value="Policy">Policy</option>
+          <option value="Legal">Legal</option>
+          <option value="Finance">Finance</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <button class="submit-btn" id="submitBtn" onclick="addDocument()">Add to Library →</button>
+      <div id="formMsg"></div>
+    </div>
+
+    <!-- Document List -->
+    <div class="list-panel">
+      <div class="list-header">
+        <div class="list-title">All Documents</div>
+        <span id="docCount"></span>
+      </div>
+      <div class="search-row">
+        <input type="text" id="adminSearch" placeholder="Filter by title, category…"/>
+      </div>
+      <div class="doc-list" id="docList">
+        <div class="loading-pulse"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Dialog -->
+<div class="overlay" id="overlay">
+  <div class="dialog">
+    <h3>Delete Document?</h3>
+    <p>This will permanently remove the document from the library. This action cannot be undone.</p>
+    <div class="dialog-btns">
+      <button onclick="closeDialog()">Cancel</button>
+      <button class="confirm-del" id="confirmDelBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc,
+           onSnapshot, query, orderBy, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  // ── 🔧 REPLACE WITH YOUR FIREBASE CONFIG ──────────────────────────────────
+  const firebaseConfig = {
+  apiKey: "AIzaSyBE3liqTY30a6kw4WzknuDI5wRMbjYC8zQ",
+  authDomain: "th-7e1b4.firebaseapp.com",
+  databaseURL: "https://th-7e1b4-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "th-7e1b4",
+  storageBucket: "th-7e1b4.firebasestorage.app",
+  messagingSenderId: "177367546112",
+  appId: "1:177367546112:web:70577d77bd8985bbab9be5"
+};
+  // ──────────────────────────────────────────────────────────────────────────
+
+  const app  = initializeApp(firebaseConfig);
+  const db   = getFirestore(app);
+  const auth = getAuth(app);
+
+  let allDocs = [];
+  let pendingDeleteId = null;
+  let unsubSnapshot = null;
+
+  // ── Auth ────────────────────────────────────────────────────────────────
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appShell').style.display = 'block';
+      startListening();
+    } else {
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('appShell').style.display = 'none';
+      if (unsubSnapshot) { unsubSnapshot(); unsubSnapshot = null; }
+    }
+  });
+
+  window.doLogin = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPass').value;
+    const btn   = document.getElementById('loginBtn');
+    const err   = document.getElementById('loginError');
+    if (!email || !pass) { err.textContent = 'Please enter email and password.'; return; }
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+    err.textContent = '';
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (e) {
+      err.textContent = e.message;
+      btn.disabled = false;
+      btn.textContent = 'Sign In →';
+    }
+  };
+
+  window.doLogout = async () => { await signOut(auth); };
+
+  // Enter key on login
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') {
+      window.doLogin();
+    }
+  });
+
+  // ── Firestore ──────────────────────────────────────────────────────────
+  function startListening() {
+    const q = query(collection(db, 'pdfs'), orderBy('createdAt', 'desc'));
+    unsubSnapshot = onSnapshot(q, snap => {
+      allDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderList(allDocs);
+    });
+  }
+
+  function formatDate(ts) {
+    if (!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  }
+
+  function renderList(docs) {
+    const list  = document.getElementById('docList');
+    const count = document.getElementById('docCount');
+    count.textContent = `${docs.length} doc${docs.length !== 1 ? 's' : ''}`;
+    if (!docs.length) {
+      list.innerHTML = `<div class="empty"><div class="icon">📂</div><p>No documents yet.<br>Add your first PDF using the form.</p></div>`;
+      return;
+    }
+    list.innerHTML = docs.map((d, i) => `
+      <div class="doc-item" style="animation-delay:${i*0.05}s">
+        <div class="doc-icon">
+          <svg width="20" height="24" viewBox="0 0 18 22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 1H3a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7L10 1z"/>
+            <path d="M10 1v6h6"/>
+          </svg>
+        </div>
+        <div class="doc-info">
+          <div class="doc-title">${d.title || 'Untitled'}</div>
+          <div class="doc-url">${d.url || '—'}</div>
+          <div class="doc-bottom">
+            <span class="doc-tag">${d.category || 'PDF'}</span>
+            <span class="doc-date">${formatDate(d.createdAt)}</span>
+          </div>
+        </div>
+        <div class="doc-actions">
+          <a class="act-btn" href="${d.url}" target="_blank">Open</a>
+          <button class="act-btn del" onclick="confirmDelete('${d.id}')">Delete</button>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Add Document ───────────────────────────────────────────────────────
+  window.addDocument = async () => {
+    const title = document.getElementById('fTitle').value.trim();
+    const url   = document.getElementById('fUrl').value.trim();
+    const desc  = document.getElementById('fDesc').value.trim();
+    const cat   = document.getElementById('fCat').value;
+    const msg   = document.getElementById('formMsg');
+    const btn   = document.getElementById('submitBtn');
+
+    msg.className = '';
+    if (!title) { msg.className='error'; msg.textContent='Title is required.'; return; }
+    if (!url)   { msg.className='error'; msg.textContent='PDF URL is required.'; return; }
+    try { new URL(url); } catch { msg.className='error'; msg.textContent='Please enter a valid URL.'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+    msg.textContent = '';
+
+    try {
+      await addDoc(collection(db, 'pdfs'), {
+        title, url, description: desc, category: cat,
+        createdAt: serverTimestamp()
+      });
+      msg.className = 'success';
+      msg.textContent = '✓ Document added successfully.';
+      document.getElementById('fTitle').value = '';
+      document.getElementById('fUrl').value   = '';
+      document.getElementById('fDesc').value  = '';
+      document.getElementById('fCat').value   = 'General';
+    } catch (e) {
+      msg.className = 'error';
+      msg.textContent = e.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Add to Library →';
+    }
+  };
+
+  // ── Delete ─────────────────────────────────────────────────────────────
+  window.confirmDelete = (id) => {
+    pendingDeleteId = id;
+    document.getElementById('overlay').classList.add('show');
+    document.getElementById('confirmDelBtn').onclick = async () => {
+      try {
+        await deleteDoc(doc(db, 'pdfs', pendingDeleteId));
+        showToast('Document deleted.');
+      } catch (e) {
+        showToast(e.message, true);
+      } finally {
+        closeDialog();
+      }
+    };
+  };
+
+  window.closeDialog = () => {
+    document.getElementById('overlay').classList.remove('show');
+    pendingDeleteId = null;
+  };
+
+  // ── Search filter ──────────────────────────────────────────────────────
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'adminSearch') return;
+    const q = e.target.value.toLowerCase();
+    renderList(allDocs.filter(d =>
+      (d.title||'').toLowerCase().includes(q) ||
+      (d.category||'').toLowerCase().includes(q) ||
+      (d.description||'').toLowerCase().includes(q)
+    ));
+  });
+
+  // ── Toast ──────────────────────────────────────────────────────────────
+  function showToast(msg, isErr=false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isErr ? ' err' : '') + ' show';
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+  window.showToast = showToast;
+</script>
+</body>
+</html>
